@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TUG OF WAR — Round Ledger</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+  :root{
+    --felt-1:#1b3a2f;
+    --felt-2:#0f2820;
+    --gold:#ffcd3c;
+    --gold-deep:#e0a72a;
+    --red:#ff4d5e;
+    --red-deep:#c22638;
+    --blue:#4fa8ff;
+    --blue-deep:#2b6fc2;
+    --cream:#fbf3d9;
+    --ink:#1a1410;
+    --panel:#fdf6e3;
+    --panel-edge:#3a2a1a;
+    --shadow:rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,.05), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,.04), transparent 45%),
+      repeating-linear-gradient(135deg, rgba(0,0,0,.05) 0px, rgba(0,0,0,.05) 2px, transparent 2px, transparent 14px),
+      linear-gradient(160deg, var(--felt-1), var(--felt-2));
+    font-family:'Baloo 2', sans-serif;
+    color:var(--cream);
+    padding:18px 14px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:720px; margin:0 auto;}
+
+  /* ---------- Header ---------- */
+  .title-card{
+    text-align:center;
+    margin-bottom:16px;
+    position:relative;
+  }
+  .title-card h1{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:clamp(28px, 8vw, 42px);
+    margin:0;
+    letter-spacing:.5px;
+    color:var(--gold);
+    text-shadow:
+      3px 3px 0 var(--panel-edge),
+      0 0 22px rgba(255,205,60,.35);
+    transform:rotate(-1.5deg);
+  }
+  .title-card .sub{
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    color:var(--cream);
+    opacity:.65;
+    margin-top:4px;
+  }
+
+  /* ---------- Round pips ---------- */
+  .round-pips{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:14px 0 20px;
+  }
+  .pip{
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    font-weight:700;
+    padding:6px 14px;
+    border-radius:20px;
+    border:2px solid rgba(255,255,255,.15);
+    color:rgba(255,255,255,.45);
+    cursor:pointer;
+    transition:.15s;
+    background:rgba(0,0,0,.2);
+  }
+  .pip.active{
+    background:var(--gold);
+    color:var(--ink);
+    border-color:var(--gold-deep);
+    box-shadow:0 3px 0 var(--gold-deep), 0 0 14px rgba(255,205,60,.5);
+    transform:translateY(-2px);
+  }
+  .pip.done{
+    border-color:rgba(79,168,255,.4);
+    color:var(--blue);
+  }
+
+  /* ---------- Team labels ---------- */
+  .teams-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    gap:10px;
+  }
+  .team-chip{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 14px;
+    border-radius:14px;
+    border:3px solid var(--panel-edge);
+    font-weight:700;
+    font-size:15px;
+    box-shadow:0 4px 0 rgba(0,0,0,.35);
+  }
+  .team-chip.a{background:linear-gradient(160deg, var(--red), var(--red-deep)); justify-content:flex-start;}
+  .team-chip.b{background:linear-gradient(160deg, var(--blue), var(--blue-deep)); justify-content:flex-end; text-align:right;}
+  .team-chip input{
+    background:transparent;
+    border:none;
+    color:var(--cream);
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:16px;
+    width:100%;
+    outline:none;
+    text-shadow:1px 1px 0 rgba(0,0,0,.3);
+  }
+  .team-chip.b input{text-align:right;}
+  .team-chip .score-num{
+    font-family:'Space Mono', monospace;
+    background:rgba(0,0,0,.25);
+    padding:3px 9px;
+    border-radius:8px;
+    font-size:14px;
+    min-width:34px;
+    text-align:center;
+  }
+
+  /* ---------- Rope track ---------- */
+  .rope-stage{
+    position:relative;
+    background:var(--panel);
+    border:3px solid var(--panel-edge);
+    border-radius:18px;
+    padding:26px 14px 18px;
+    box-shadow:0 6px 0 rgba(0,0,0,.35), inset 0 0 0 3px rgba(255,255,255,.4);
+    margin-bottom:18px;
+  }
+  .rope-stage .win-labels{
+    display:flex;
+    justify-content:space-between;
+    font-family:'Space Mono', monospace;
+    font-size:10px;
+    font-weight:700;
+    color:var(--panel-edge);
+    opacity:.55;
+    margin-bottom:6px;
+    padding:0 2px;
+  }
+  .track{
+    position:relative;
+    height:64px;
+    background:
+      repeating-linear-gradient(90deg, rgba(58,42,26,.08) 0 1px, transparent 1px 100%);
+    background-size: calc(100% / 21) 100%;
+    border-radius:10px;
+    overflow:visible;
+  }
+  .track::before{
+    content:'';
+    position:absolute;
+    top:50%; left:3%; right:3%;
+    height:10px;
+    transform:translateY(-50%);
+    border-radius:6px;
+    background:
+      repeating-linear-gradient(90deg, #caa15a 0 10px, #b5843a 10px 20px);
+    box-shadow:0 3px 0 rgba(0,0,0,.25), inset 0 -3px 4px rgba(0,0,0,.25), inset 0 2px 2px rgba(255,255,255,.3);
+  }
+  .zone-marker{
+    position:absolute;
+    top:2px; bottom:2px;
+    width:3px;
+    background:repeating-linear-gradient(180deg, var(--red-deep) 0 5px, transparent 5px 10px);
+    opacity:.55;
+  }
+  .zone-marker.win-a{ left: calc(3% + (94%) * (1/21)); }
+  .zone-marker.win-b{ left: calc(3% + (94%) * (20/21)); }
+  .zone-marker.center{ left: calc(3% + (94%) * (10.5/21)); background: repeating-linear-gradient(180deg, var(--gold-deep) 0 5px, transparent 5px 10px); opacity:.7;}
+
+  .pointer{
+    position:absolute;
+    top:50%;
+    width:34px; height:34px;
+    transform:translate(-50%,-50%);
+    left:50%;
+    transition: left .5s cubic-bezier(.34,1.56,.64,1);
+    z-index:5;
+  }
+  .pointer .diamond{
+    width:100%; height:100%;
+    background:radial-gradient(circle at 35% 30%, #fff2b8, var(--gold) 55%, var(--gold-deep) 100%);
+    border:3px solid var(--panel-edge);
+    border-radius:50%;
+    box-shadow:0 4px 0 rgba(0,0,0,.35), 0 0 18px rgba(255,205,60,.7);
+    position:relative;
+  }
+  .pointer .diamond::after{
+    content:'▼';
+    position:absolute;
+    top:-17px; left:50%;
+    transform:translateX(-50%);
+    color:var(--gold);
+    font-size:14px;
+    text-shadow:1px 1px 0 var(--panel-edge);
+  }
+  .pointer.pulse .diamond{
+    animation: pop .5s ease;
+  }
+  @keyframes pop{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.5);}
+    100%{transform:scale(1);}
+  }
+
+  .flag{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:20px;
+    z-index:4;
+  }
+  .flag.a{left:3%;}
+  .flag.b{left:97%; transform:translateY(-50%) scaleX(-1);}
+
+  .step-readout{
+    text-align:center;
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    color:var(--panel-edge);
+    margin-top:10px;
+    opacity:.7;
+  }
+  .step-readout b{color:var(--red-deep);}
+  .step-readout b.pos{color:var(--blue-deep);}
+
+  /* ---------- Section labels ---------- */
+  .section-label{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:1px;
+    color:var(--cream);
+    opacity:.6;
+    margin:18px 0 8px 4px;
+  }
+
+  /* ---------- Question type buttons ---------- */
+  .qtype-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .qtype-card{
+    border:3px solid var(--panel-edge);
+    border-radius:14px;
+    padding:10px 6px 8px;
+    text-align:center;
+    background:var(--panel);
+    color:var(--ink);
+    box-shadow:0 4px 0 rgba(0,0,0,.3);
+    cursor:pointer;
+    transition:.12s;
+    user-select:none;
+  }
+  .qtype-card:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.3);}
+  .qtype-card.selected{
+    background:linear-gradient(160deg, var(--gold), var(--gold-deep));
+    box-shadow:0 4px 0 var(--gold-deep), 0 0 16px rgba(255,205,60,.5);
+    transform:translateY(-2px);
+  }
+  .qtype-card.locked{opacity:.4; cursor:not-allowed;}
+  .qtype-card .name{font-weight:800; font-size:14px;}
+  .qtype-card .meta{font-family:'Space Mono', monospace; font-size:10px; opacity:.65; margin-top:2px;}
+  .qtype-card .pts{font-family:'Space Mono', monospace; font-size:11px; font-weight:700; margin-top:3px;}
+
+  .used-counts{
+    display:flex;
+    justify-content:center;
+    gap:16px;
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--cream);
+    opacity:.7;
+    margin-bottom:16px;
+  }
+  .used-counts span b{color:var(--gold);}
+
+  /* ---------- Dual verdict panels ---------- */
+  .dual-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .team-panel{
+    border:3px solid var(--panel-edge);
+    border-radius:16px;
+    padding:12px 10px;
+    box-shadow:0 5px 0 rgba(0,0,0,.32);
+    transition:.15s;
+  }
+  .team-panel.a{background:linear-gradient(165deg, rgba(255,77,94,.16), rgba(0,0,0,.15)); }
+  .team-panel.b{background:linear-gradient(165deg, rgba(79,168,255,.16), rgba(0,0,0,.15)); }
+  .team-panel .pname{
+    font-weight:800;
+    font-size:15px;
+    text-align:center;
+    margin-bottom:8px;
+    color:var(--cream);
+  }
+  .team-panel.a .pname{color:#ffb3ba;}
+  .team-panel.b .pname{color:#b3d9ff;}
+
+  .challenge-toggle-mini{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    font-family:'Space Mono', monospace;
+    font-size:10px;
+    padding:6px 4px;
+    margin-bottom:8px;
+    border-radius:10px;
+    border:2px solid rgba(255,255,255,.2);
+    background:rgba(0,0,0,.2);
+    cursor:pointer;
+    color:var(--cream);
+    opacity:.7;
+    user-select:none;
+  }
+  .challenge-toggle-mini.on{
+    background:linear-gradient(160deg, #7a2fbf, #4d1a80);
+    border-color:#a557e0;
+    opacity:1;
+    box-shadow:0 0 10px rgba(122,47,191,.6);
+  }
+
+  .verdict-pair{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .verdict-btn{
+    padding:14px 4px;
+    border-radius:12px;
+    border:3px solid var(--panel-edge);
+    font-weight:800;
+    font-size:13px;
+    text-align:center;
+    cursor:pointer;
+    box-shadow:0 4px 0 rgba(0,0,0,.3);
+    transition:.1s;
+    color:var(--ink);
+  }
+  .verdict-btn:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.3);}
+  .verdict-btn.correct{background:linear-gradient(160deg, #8ee06b, #4fa832);}
+  .verdict-btn.wrong{background:linear-gradient(160deg, #ff8a7a, var(--red-deep)); color:var(--cream);}
+  .verdict-btn.chosen-correct{outline:3px solid var(--gold); box-shadow:0 4px 0 rgba(0,0,0,.3), 0 0 12px rgba(255,205,60,.7);}
+  .verdict-btn.chosen-wrong{outline:3px solid var(--gold); box-shadow:0 4px 0 rgba(0,0,0,.3), 0 0 12px rgba(255,205,60,.7);}
+  .verdict-btn:disabled{opacity:.3; cursor:not-allowed;}
+
+  .panel-status{
+    text-align:center;
+    font-family:'Space Mono', monospace;
+    font-size:10px;
+    margin-top:8px;
+    opacity:.65;
+    min-height:14px;
+  }
+
+  .resolve-row{
+    text-align:center;
+    margin-bottom:8px;
+  }
+  .resolve-btn{
+    background:linear-gradient(160deg, var(--gold), var(--gold-deep));
+    border:3px solid var(--panel-edge);
+    padding:14px 30px;
+    border-radius:16px;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow:0 5px 0 rgba(0,0,0,.35);
+    color:var(--ink);
+    width:100%;
+  }
+  .resolve-btn:active{transform:translateY(4px); box-shadow:0 1px 0 rgba(0,0,0,.35);}
+  .resolve-btn:disabled{
+    opacity:.35;
+    cursor:not-allowed;
+    background:rgba(255,255,255,.15);
+    box-shadow:0 5px 0 rgba(0,0,0,.2);
+  }
+
+  .undo-btn{
+    display:block;
+    margin:6px auto 0;
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--cream);
+    opacity:.55;
+    background:none;
+    border:none;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:6px;
+  }
+
+  /* ---------- Log ---------- */
+  .log-toggle{
+    text-align:center;
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--gold);
+    opacity:.8;
+    cursor:pointer;
+    margin:18px 0 6px;
+    user-select:none;
+  }
+  .log-panel{
+    background:rgba(0,0,0,.25);
+    border:2px dashed rgba(255,255,255,.2);
+    border-radius:12px;
+    padding:10px 14px;
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    max-height:180px;
+    overflow-y:auto;
+    display:none;
+  }
+  .log-panel.open{display:block;}
+  .log-entry{padding:3px 0; border-bottom:1px solid rgba(255,255,255,.08); opacity:.85;}
+  .log-entry:last-child{border-bottom:none;}
+
+  /* ---------- Winner overlay ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(10,20,15,.88);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .overlay.show{display:flex;}
+  .winner-card{
+    background:var(--panel);
+    border:5px solid var(--gold);
+    border-radius:22px;
+    padding:34px 26px;
+    text-align:center;
+    max-width:360px;
+    box-shadow:0 0 0 6px var(--panel-edge), 0 12px 40px rgba(0,0,0,.6), 0 0 60px rgba(255,205,60,.4);
+    animation:winnerIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes winnerIn{
+    0%{transform:scale(.6) rotate(-8deg); opacity:0;}
+    100%{transform:scale(1) rotate(0); opacity:1;}
+  }
+  .winner-card .big{
+    font-size:15px;
+    font-weight:700;
+    color:var(--panel-edge);
+    opacity:.6;
+    font-family:'Space Mono', monospace;
+  }
+  .winner-card h2{
+    font-size:36px;
+    margin:8px 0 4px;
+    color:var(--red-deep);
+    text-shadow:2px 2px 0 rgba(0,0,0,.15);
+  }
+  .winner-card .trophy{font-size:54px; margin:6px 0;}
+  .winner-card button{
+    margin-top:18px;
+    background:linear-gradient(160deg, var(--gold), var(--gold-deep));
+    border:3px solid var(--panel-edge);
+    padding:10px 22px;
+    border-radius:12px;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+    box-shadow:0 4px 0 rgba(0,0,0,.35);
+  }
+
+  /* ---------- Reset button ---------- */
+  .reset-row{
+    text-align:center;
+    margin-top:20px;
+  }
+  .reset-btn{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:rgba(255,255,255,.4);
+    background:none;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:20px;
+    padding:6px 16px;
+    cursor:pointer;
+  }
+
+  .flash-banner{
+    text-align:center;
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    font-weight:700;
+    padding:8px;
+    border-radius:10px;
+    margin-bottom:12px;
+    background:rgba(255,205,60,.15);
+    border:2px solid rgba(255,205,60,.4);
+    color:var(--gold);
+    display:none;
+  }
+  .flash-banner.show{display:block; animation:flashIn .3s ease;}
+  @keyframes flashIn{
+    0%{opacity:0; transform:translateY(-6px);}
+    100%{opacity:1; transform:translateY(0);}
+  }
+
+  .net-preview{
+    text-align:center;
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    color:var(--gold);
+    opacity:.85;
+    margin-bottom:10px;
+    min-height:14px;
+  }
+
+  @media (max-width:380px){
+    .qtype-card .name{font-size:12px;}
+    .verdict-btn{font-size:11px; padding:12px 2px;}
+    .team-panel .pname{font-size:13px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="title-card">
+    <h1>🪢 TUG OF WAR</h1>
+    <div class="sub">ROUND LEDGER · BOTH TEAMS PLAY EACH QUESTION SIMULTANEOUSLY</div>
+  </div>
+
+  <div class="round-pips" id="roundPips"></div>
+
+  <div class="teams-row">
+    <div class="team-chip a">
+      <input id="nameA" value="TEAM A" maxlength="14">
+      <span class="score-num" id="stepsA">0</span>
+    </div>
+    <div class="team-chip b">
+      <span class="score-num" id="stepsB">0</span>
+      <input id="nameB" value="TEAM B" maxlength="14">
+    </div>
+  </div>
+
+  <div class="flash-banner" id="flashBanner"></div>
+
+  <div class="rope-stage">
+    <div class="win-labels">
+      <span id="labelA">A WINS →</span>
+      <span>CENTER</span>
+      <span id="labelB">← B WINS</span>
+    </div>
+    <div class="track" id="track">
+      <div class="zone-marker win-a"></div>
+      <div class="zone-marker center"></div>
+      <div class="zone-marker win-b"></div>
+      <div class="flag a">🚩</div>
+      <div class="flag b">🚩</div>
+      <div class="pointer" id="pointer"><div class="diamond"></div></div>
+    </div>
+    <div class="step-readout" id="stepReadout">Pointer at center · 0 steps moved</div>
+  </div>
+
+  <div class="section-label">CURRENT QUESTION — SAME FOR BOTH TEAMS</div>
+  <div class="qtype-grid" id="qtypeGrid">
+    <div class="qtype-card" data-type="easy" data-pts="1">
+      <div class="name">Easy</div>
+      <div class="meta">30 sec</div>
+      <div class="pts">1 pt</div>
+    </div>
+    <div class="qtype-card" data-type="medium" data-pts="2">
+      <div class="name">Medium</div>
+      <div class="meta">40 sec</div>
+      <div class="pts">2 pt</div>
+    </div>
+    <div class="qtype-card" data-type="hard" data-pts="3">
+      <div class="name">Hard</div>
+      <div class="meta">60 sec</div>
+      <div class="pts">3 pt</div>
+    </div>
+  </div>
+
+  <div class="used-counts">
+    <span id="countA">A: <b>0</b>/18 asked</span>
+    <span id="countB">B: <b>0</b>/18 asked</span>
+  </div>
+
+  <div class="section-label">MARK EACH TEAM'S RESULT</div>
+  <div class="dual-grid">
+    <div class="team-panel a">
+      <div class="pname" id="pnameA">TEAM A</div>
+      <div class="challenge-toggle-mini" id="challengeA">🃏 Challenge thrown AT this team</div>
+      <div class="verdict-pair">
+        <div class="verdict-btn correct" data-team="A" data-verdict="correct">✔ RIGHT</div>
+        <div class="verdict-btn wrong" data-team="A" data-verdict="wrong">✘ WRONG</div>
+      </div>
+      <div class="panel-status" id="statusA">not marked yet</div>
+    </div>
+    <div class="team-panel b">
+      <div class="pname" id="pnameB">TEAM B</div>
+      <div class="challenge-toggle-mini" id="challengeB">🃏 Challenge thrown AT this team</div>
+      <div class="verdict-pair">
+        <div class="verdict-btn correct" data-team="B" data-verdict="correct">✔ RIGHT</div>
+        <div class="verdict-btn wrong" data-team="B" data-verdict="wrong">✘ WRONG</div>
+      </div>
+      <div class="panel-status" id="statusB">not marked yet</div>
+    </div>
+  </div>
+
+  <div class="net-preview" id="netPreview"></div>
+
+  <div class="resolve-row">
+    <button class="resolve-btn" id="resolveBtn" disabled>MOVE THE ROPE</button>
+  </div>
+  <button class="undo-btn" id="undoBtn">undo last move</button>
+
+  <div class="log-toggle" id="logToggle">▾ show move log</div>
+  <div class="log-panel" id="logPanel"></div>
+
+  <div class="reset-row">
+    <button class="reset-btn" id="resetBtn">reset entire game</button>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="winner-card">
+    <div class="big">THE ROPE HAS SPOKEN</div>
+    <div class="trophy">🏆</div>
+    <h2 id="winnerName">TEAM A</h2>
+    <div class="big" id="winnerReason">pulled the flag to their side</div>
+    <button id="closeOverlay">back to the pit</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const WIN_STEPS = 10;
+  const TRACK_UNITS = 21;
+
+  const state = {
+    round: 1,
+    pos: 0, // negative = toward A, positive = toward B
+    askedA: 0,
+    askedB: 0,
+    selectedType: null,
+    pts: 0,
+    challengeA: false, // challenge thrown at team A (by team B) for current Q
+    challengeB: false,
+    verdictA: null, // 'correct' | 'wrong' | null
+    verdictB: null,
+    log: [],
+    history: [],
+    gameOver: false
+  };
+
+  const els = {
+    pointer: document.getElementById('pointer'),
+    stepReadout: document.getElementById('stepReadout'),
+    stepsA: document.getElementById('stepsA'),
+    stepsB: document.getElementById('stepsB'),
+    nameA: document.getElementById('nameA'),
+    nameB: document.getElementById('nameB'),
+    labelA: document.getElementById('labelA'),
+    labelB: document.getElementById('labelB'),
+    pnameA: document.getElementById('pnameA'),
+    pnameB: document.getElementById('pnameB'),
+    countA: document.getElementById('countA'),
+    countB: document.getElementById('countB'),
+    qtypeGrid: document.getElementById('qtypeGrid'),
+    qtypeCards: document.querySelectorAll('.qtype-card'),
+    challengeA: document.getElementById('challengeA'),
+    challengeB: document.getElementById('challengeB'),
+    statusA: document.getElementById('statusA'),
+    statusB: document.getElementById('statusB'),
+    netPreview: document.getElementById('netPreview'),
+    verdictBtns: document.querySelectorAll('.verdict-btn'),
+    resolveBtn: document.getElementById('resolveBtn'),
+    undoBtn: document.getElementById('undoBtn'),
+    logToggle: document.getElementById('logToggle'),
+    logPanel: document.getElementById('logPanel'),
+    resetBtn: document.getElementById('resetBtn'),
+    overlay: document.getElementById('overlay'),
+    winnerName: document.getElementById('winnerName'),
+    winnerReason: document.getElementById('winnerReason'),
+    closeOverlay: document.getElementById('closeOverlay'),
+    flashBanner: document.getElementById('flashBanner')
+  };
+
+  // Naming logic
+  function syncNames() {
+    els.pnameA.innerText = els.nameA.value || "TEAM A";
+    els.pnameB.innerText = els.nameB.value || "TEAM B";
+    els.labelA.innerText = (els.nameA.value || "A") + " WINS →";
+    els.labelB.innerText = "← " + (els.nameB.value || "B") + " WINS";
+  }
+  els.nameA.addEventListener('input', syncNames);
+  els.nameB.addEventListener('input', syncNames);
+
+  // Question Type Selection
+  els.qtypeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      if(state.gameOver) return;
+      els.qtypeCards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      state.selectedType = card.dataset.type;
+      state.pts = parseInt(card.dataset.pts, 10);
+      updatePreview();
+      updateResolveBtn();
+    });
+  });
+
+  // Challenge Toggle
+  els.challengeA.addEventListener('click', () => {
+    if(state.gameOver) return;
+    state.challengeA = !state.challengeA;
+    els.challengeA.classList.toggle('on', state.challengeA);
+    updatePreview();
+  });
+  
+  els.challengeB.addEventListener('click', () => {
+    if(state.gameOver) return;
+    state.challengeB = !state.challengeB;
+    els.challengeB.classList.toggle('on', state.challengeB);
+    updatePreview();
+  });
+
+  // Verdict Selection
+  els.verdictBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(state.gameOver) return;
+      const team = btn.dataset.team;
+      const verdict = btn.dataset.verdict;
+      
+      // Update state
+      if(team === 'A') state.verdictA = verdict;
+      if(team === 'B') state.verdictB = verdict;
+      
+      // Update UI classes
+      els.verdictBtns.forEach(b => {
+        if(b.dataset.team === team) {
+          b.classList.remove('chosen-correct', 'chosen-wrong');
+        }
+      });
+      btn.classList.add(verdict === 'correct' ? 'chosen-correct' : 'chosen-wrong');
+      
+      const statusEl = team === 'A' ? els.statusA : els.statusB;
+      statusEl.innerText = verdict === 'correct' ? 'Marked Correct' : 'Marked Wrong';
+      
+      updatePreview();
+      updateResolveBtn();
+    });
+  });
+
+  function calculateDelta() {
+    if(!state.selectedType || !state.verdictA || !state.verdictB) return null;
+    let pA = 0;
+    let pB = 0;
+
+    // Team A movement calculation
+    if (state.challengeA) {
+      if (state.verdictA === 'correct') pA = -state.pts; // Moves toward A
+      else pA = state.pts * 2; // Moves heavily toward B
+    } else {
+      if (state.verdictA === 'correct') pA = -state.pts;
+    }
+
+    // Team B movement calculation
+    if (state.challengeB) {
+      if (state.verdictB === 'correct') pB = state.pts; // Moves toward B
+      else pB = -(state.pts * 2); // Moves heavily toward A
+    } else {
+      if (state.verdictB === 'correct') pB = state.pts;
+    }
+
+    return pA + pB;
+  }
+
+  function updatePreview() {
+    const delta = calculateDelta();
+    if (delta === null) {
+      els.netPreview.innerText = "";
+      return;
+    }
+
+    if (delta === 0) {
+      els.netPreview.innerText = "Net result: Rope doesn't move.";
+    } else if (delta < 0) {
+      els.netPreview.innerText = `Net result: Moves ${Math.abs(delta)} steps toward ${els.nameA.value || "A"}.`;
+    } else {
+      els.netPreview.innerText = `Net result: Moves ${Math.abs(delta)} steps toward ${els.nameB.value || "B"}.`;
+    }
+  }
+
+  function updateResolveBtn() {
+    els.resolveBtn.disabled = !(state.selectedType && state.verdictA && state.verdictB);
+  }
+
+  els.resolveBtn.addEventListener('click', () => {
+    const delta = calculateDelta();
+    if(delta === null) return;
+    
+    // Save history for undo
+    state.history.push({
+      pos: state.pos,
+      askedA: state.askedA,
+      askedB: state.askedB,
+      round: state.round,
+      logLength: state.log.length
+    });
+
+    // Apply changes
+    state.pos += delta;
+    state.askedA++;
+    state.askedB++;
+    state.round++;
+
+    // Add to log
+    let msg = `Round ${state.round-1} (${state.selectedType}): `;
+    if(delta === 0) msg += `Draw. Rope holds.`;
+    else if(delta < 0) msg += `${els.nameA.value || "A"} pulled ${Math.abs(delta)}.`;
+    else msg += `${els.nameB.value || "B"} pulled ${Math.abs(delta)}.`;
+    
+    if (state.challengeA) msg += ` (A was challenged)`;
+    if (state.challengeB) msg += ` (B was challenged)`;
+    
+    state.log.push(msg);
+    updateUI();
+    resetRoundSelections();
+    
+    els.pointer.classList.add('pulse');
+    setTimeout(() => els.pointer.classList.remove('pulse'), 500);
+
+    // Check Win
+    if(state.pos <= -WIN_STEPS) showWinner(els.nameA.value || 'TEAM A', 'pulled the flag to their side');
+    else if(state.pos >= WIN_STEPS) showWinner(els.nameB.value || 'TEAM B', 'pulled the flag to their side');
+    else if(state.askedA >= 18) {
+      // End of questions
+      if(state.pos < 0) showWinner(els.nameA.value || 'TEAM A', 'had the rope at the end of 18 rounds');
+      else if (state.pos > 0) showWinner(els.nameB.value || 'TEAM B', 'had the rope at the end of 18 rounds');
+      else {
+         // Tie
+         els.flashBanner.innerText = "18 Rounds over. IT'S A TIE! Enter Sudden Death.";
+         els.flashBanner.classList.add('show');
+         setTimeout(() => els.flashBanner.classList.remove('show'), 4000);
+      }
+    }
+  });
+
+  els.undoBtn.addEventListener('click', () => {
+    if(state.history.length === 0 || state.gameOver) return;
+    const last = state.history.pop();
+    state.pos = last.pos;
+    state.askedA = last.askedA;
+    state.askedB = last.askedB;
+    state.round = last.round;
+    state.log = state.log.slice(0, last.logLength);
+    updateUI();
+  });
+
+  function resetRoundSelections() {
+    state.selectedType = null;
+    state.verdictA = null;
+    state.verdictB = null;
+    state.challengeA = false;
+    state.challengeB = false;
+    
+    els.qtypeCards.forEach(c => c.classList.remove('selected'));
+    els.verdictBtns.forEach(b => b.classList.remove('chosen-correct', 'chosen-wrong'));
+    els.challengeA.classList.remove('on');
+    els.challengeB.classList.remove('on');
+    els.statusA.innerText = "not marked yet";
+    els.statusB.innerText = "not marked yet";
+    
+    updatePreview();
+    updateResolveBtn();
+  }
+
+  function updateUI() {
+    // Update pointer position
+    // Win steps = 10, total track length = 20 steps (-10 to +10)
+    // Left boundary = 3%, Right boundary = 97% -> Span = 94%
+    // At pos = -10, left = 3% + 94%*(0/20) = 3%
+    // At pos = 0, left = 3% + 94%*(10/20) = 50%
+    // At pos = +10, left = 3% + 94%*(20/20) = 97%
+    let visualPos = state.pos;
+    if (visualPos < -WIN_STEPS) visualPos = -WIN_STEPS;
+    if (visualPos > WIN_STEPS) visualPos = WIN_STEPS;
+    
+    const fraction = (visualPos + WIN_STEPS) / (2 * WIN_STEPS);
+    els.pointer.style.left = `calc(3% + 94% * ${fraction})`;
+
+    if (state.pos === 0) {
+      els.stepReadout.innerHTML = `Pointer at center · 0 steps moved`;
+    } else if (state.pos < 0) {
+      els.stepReadout.innerHTML = `<b>${els.nameA.value || "A"}</b> is pulling by ${Math.abs(state.pos)} steps`;
+    } else {
+      els.stepReadout.innerHTML = `<b class="pos">${els.nameB.value || "B"}</b> is pulling by ${state.pos} steps`;
+    }
+
+    els.countA.innerHTML = `A: <b>${state.askedA}</b>/18 asked`;
+    els.countB.innerHTML = `B: <b>${state.askedB}</b>/18 asked`;
+
+    // Update log
+    els.logPanel.innerHTML = state.log.map(msg => `<div class="log-entry">${msg}</div>`).join('');
+    els.logPanel.scrollTop = els.logPanel.scrollHeight;
+  }
+
+  els.logToggle.addEventListener('click', () => {
+    const isOpen = els.logPanel.classList.toggle('open');
+    els.logToggle.innerText = isOpen ? '▴ hide move log' : '▾ show move log';
+  });
+
+  function showWinner(name, reason) {
+    state.gameOver = true;
+    els.winnerName.innerText = name;
+    els.winnerReason.innerText = reason;
+    els.overlay.classList.add('show');
+  }
+
+  els.closeOverlay.addEventListener('click', () => {
+    els.overlay.classList.remove('show');
+  });
+
+  els.resetBtn.addEventListener('click', () => {
+    if(confirm('Are you sure you want to reset the entire game?')) {
+      state.round = 1;
+      state.pos = 0;
+      state.askedA = 0;
+      state.askedB = 0;
+      state.log = [];
+      state.history = [];
+      state.gameOver = false;
+      resetRoundSelections();
+      updateUI();
+    }
+  });
+
+  // Init
+  syncNames();
+  updateUI();
+
+})();
+</script>
+</body>
+</html>

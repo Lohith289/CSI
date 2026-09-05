@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tug of War Quiz</title>
+<style>
+    body { font-family: Arial, sans-serif; background-color: #f4f4f9; text-align: center; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    
+    /* Rope UI */
+    .rope-container { display: flex; align-items: center; justify-content: space-between; margin: 40px 0; position: relative; }
+    .team-label { font-size: 24px; font-weight: bold; width: 100px; }
+    .rope { height: 10px; background: #8B4513; flex-grow: 1; margin: 0 20px; position: relative; border-radius: 5px; }
+    .rope-center-mark { position: absolute; left: 50%; top: -10px; height: 30px; width: 2px; background: black; }
+    
+    /* The Red Pointer */
+    .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; 
+               border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 20px solid red; 
+               transition: left 0.5s ease; }
+
+    /* Game Area */
+    .game-area { margin-top: 20px; }
+    .timer { font-size: 40px; font-weight: bold; color: #d9534f; margin: 15px 0; }
+    .question { font-size: 20px; margin-bottom: 20px; }
+    .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { padding: 15px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; background-color: #0275d8; color: white; transition: 0.2s; }
+    button:hover { background-color: #025aa5; }
+    button:disabled { background-color: #cccccc; cursor: not-allowed; }
+    
+    /* Pre-question Challenge UI */
+    .pre-turn { background: #fff3cd; padding: 20px; border-radius: 5px; border: 1px solid #ffeeba; margin-bottom: 20px; }
+    .challenge-btn { background-color: #f0ad4e; font-weight: bold; margin-top: 10px;}
+    .challenge-btn:hover { background-color: #ec971f; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Tug of War Quiz</h1>
+    
+    <div class="rope-container">
+        <div class="team-label" style="color: blue;">Team A</div>
+        <div class="rope">
+            <div class="rope-center-mark"></div>
+            <div class="pointer" id="pointer"></div>
+        </div>
+        <div class="team-label" style="color: green;">Team B</div>
+    </div>
+
+    <div class="game-area" id="game-area">
+        <div id="pre-turn-screen" class="pre-turn">
+            <h2 id="turn-announcement">Team A's Turn</h2>
+            <p>Opposing team: Do you want to use your Challenge powerup?</p>
+            <button class="challenge-btn" id="challenge-btn">Throw Challenge!</button>
+            <br><br>
+            <button id="start-turn-btn" style="background-color: #5cb85c;">Start Question</button>
+        </div>
+
+        <div id="question-screen" style="display: none;">
+            <div class="timer" id="timer">30</div>
+            <div style="font-style: italic; margin-bottom: 10px;" id="q-meta">Difficulty: Easy | Points: 1</div>
+            <div class="question" id="question-text">Question goes here?</div>
+            <div class="options" id="options-container">
+                </div>
+        </div>
+        
+        <div id="game-over-screen" style="display: none;">
+            <h2 id="winner-text"></h2>
+            <p>Proceed to Tie Breaker (Logic to be implemented based on exact rules).</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Mocking the JSON import with a JS variable for this frontend demo
+    const questionsDatabase = [
+        { id: 1, difficulty: "easy", time: 30, points: 1, question: "What is the capital of France?", options: ["Berlin", "Madrid", "Paris", "Rome"], answer: "Paris" },
+        { id: 2, difficulty: "easy", time: 30, points: 1, question: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Saturn"], answer: "Mars" },
+        { id: 3, difficulty: "medium", time: 40, points: 2, question: "What is the chemical symbol for Gold?", options: ["Ag", "Au", "Pb", "Fe"], answer: "Au" },
+        { id: 4, difficulty: "medium", time: 40, points: 2, question: "Who painted the Mona Lisa?", options: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], answer: "Leonardo da Vinci" },
+        { id: 5, difficulty: "hard", time: 60, points: 3, question: "In what year did the Titanic sink?", options: ["1912", "1905", "1898", "1923"], answer: "1912" },
+        { id: 6, difficulty: "hard", time: 60, points: 3, question: "What is the rarest blood type?", options: ["O Negative", "B Negative", "AB Negative", "A Positive"], answer: "AB Negative" }
+    ];
+
+    let currentTurn = 'A'; // 'A' or 'B'
+    let currentQuestionIndex = 0;
+    let ropePosition = 0; // 0 is middle. -15 wins for Team A, +15 wins for Team B
+    let winThreshold = 15; // The "little more than half" distance needed for a knockout
+    
+    let isChallengeActive = false;
+    let timerInterval;
+    let timeLeft = 0;
+    
+    // DOM Elements
+    const pointerEl = document.getElementById('pointer');
+    const preTurnScreen = document.getElementById('pre-turn-screen');
+    const questionScreen = document.getElementById('question-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const turnAnnouncement = document.getElementById('turn-announcement');
+    const challengeBtn = document.getElementById('challenge-btn');
+    const startTurnBtn = document.getElementById('start-turn-btn');
+    const timerEl = document.getElementById('timer');
+    const qMetaEl = document.getElementById('q-meta');
+    const qTextEl = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const winnerText = document.getElementById('winner-text');
+
+    // Event Listeners for Pre-Turn
+    challengeBtn.addEventListener('click', () => {
+        isChallengeActive = true;
+        challengeBtn.disabled = true;
+        challengeBtn.innerText = "Challenge Activated!";
+    });
+
+    startTurnBtn.addEventListener('click', () => {
+        preTurnScreen.style.display = 'none';
+        questionScreen.style.display = 'block';
+        loadQuestion();
+    });
+
+    function setupPreTurn() {
+        if (currentQuestionIndex >= questionsDatabase.length) {
+            endGame("Out of questions! Checking rope position...");
+            return;
+        }
+
+        isChallengeActive = false;
+        challengeBtn.disabled = false;
+        challengeBtn.innerText = "Throw Challenge!";
+        preTurnScreen.style.display = 'block';
+        questionScreen.style.display = 'none';
+        turnAnnouncement.innerText = `Team ${currentTurn}'s Turn`;
+        turnAnnouncement.style.color = currentTurn === 'A' ? 'blue' : 'green';
+    }
+
+    function loadQuestion() {
+        const q = questionsDatabase[currentQuestionIndex];
+        timeLeft = q.time;
+        timerEl.innerText = timeLeft;
+        
+        let challengeText = isChallengeActive ? " | ⚠️ CHALLENGE ACTIVE" : "";
+        qMetaEl.innerText = `Difficulty: ${q.difficulty.toUpperCase()} | Points: ${q.points}${challengeText}`;
+        if(isChallengeActive) qMetaEl.style.color = "red"; else qMetaEl.style.color = "black";
+
+        qTextEl.innerText = q.question;
+        optionsContainer.innerHTML = '';
+        
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            btn.onclick = () => handleAnswer(opt, q);
+            optionsContainer.appendChild(btn);
+        });
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerEl.innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                handleAnswer(null, q); // Time out counts as wrong
+            }
+        }, 1000);
+    }
+
+    function handleAnswer(selectedOption, q) {
+        clearInterval(timerInterval);
+        const isCorrect = selectedOption === q.answer;
+        
+        let pointDelta = 0;
+
+        if (isCorrect) {
+            // Right answer: Get exact points
+            pointDelta = q.points;
+            alert(`Correct! Team ${currentTurn} earns ${q.points} points.`);
+        } else {
+            // Wrong answer
+            if (isChallengeActive) {
+                // Challenge active and wrong: opposite team gets twice the points
+                pointDelta = -(q.points * 2);
+                alert(`Wrong! Challenge Active! Team ${currentTurn === 'A' ? 'B' : 'A'} steals ${q.points * 2} points!`);
+            } else {
+                alert(`Wrong! The correct answer was ${q.answer}. No points awarded.`);
+            }
+        }
+
+        updateRope(pointDelta);
+    }
+
+    function updateRope(points) {
+        // Calculate direction based on current turn
+        // Moving left (negative %) helps Team A, moving right (positive %) helps Team B
+        if (currentTurn === 'A') {
+            ropePosition -= points; 
+        } else {
+            ropePosition += points;
+        }
+
+        // Convert the position to a percentage for the CSS left property
+        // ropePosition 0 = 50%. ropePosition -15 = 0% (Team A side), +15 = 100% (Team B side)
+        let percent = 50 + (ropePosition / winThreshold) * 50;
+        
+        // Cap the visuals between 0 and 100
+        if(percent < 0) percent = 0;
+        if(percent > 100) percent = 100;
+        
+        pointerEl.style.left = `${percent}%`;
+
+        checkWinCondition();
+    }
+
+    function checkWinCondition() {
+        if (ropePosition <= -winThreshold) {
+            endGame("Team A Wins by Knockout!");
+        } else if (ropePosition >= winThreshold) {
+            endGame("Team B Wins by Knockout!");
+        } else {
+            // Switch turns and move to next question
+            currentTurn = currentTurn === 'A' ? 'B' : 'A';
+            currentQuestionIndex++;
+            setTimeout(setupPreTurn, 1000); // 1 sec pause before next turn starts
+        }
+    }
+
+    function endGame(message) {
+        preTurnScreen.style.display = 'none';
+        questionScreen.style.display = 'none';
+        gameOverScreen.style.display = 'block';
+        
+        if (ropePosition < 0 && message.includes("Checking")) {
+            winnerText.innerText = "Match Over! Team A wins by distance!";
+        } else if (ropePosition > 0 && message.includes("Checking")) {
+            winnerText.innerText = "Match Over! Team B wins by distance!";
+        } else if (ropePosition === 0 && message.includes("Checking")) {
+            winnerText.innerText = "It's a Tie! Proceeding to Tie Breaker...";
+        } else {
+            winnerText.innerText = message;
+        }
+    }
+
+    // Initialize Game
+    setupPreTurn();
+
+</script>
+</body>
+</html>
